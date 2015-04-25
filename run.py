@@ -143,9 +143,7 @@ if __name__ == '__main__':
    locate_source_files(matches)
    
    p = Pool(processes = 4)
-   test = [list(matches)[0], list(matches)[1], list(matches)[2], list(matches)[3]]
-   matches = p.map(run_match, test)
-      
+   matches = p.map(run_match, matches)
  
    report = root_dir + "/" + "report.txt"
    if os.path.exists(report):
