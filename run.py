@@ -1,18 +1,19 @@
+# Put this script, submissions folder and skeleton-code folder in the same place
+# E.g. you need the following directory structure:
+# Grading-folder/
+# --- submissions-folder/
+# --- contest-folder/
+# --- run.py
+# --- match.py
+
+
 import sys
 import os
 import subprocess
-from match import Match
 import operator
 from multiprocessing import Pool
+from match import Match
 
-
-# PREREQUISITES: put this script, submissions folder and skeleton folder in the same place
-# e.g. you need the following directory structure:
-# Grading-folder
-# --- submissions-folder
-# --- contest-folder
-# --- run.py
-# --- match.py
 root_dir = os.getcwd()                          # directory where this script resides
 contest_dir = root_dir + "/contest"             # contest project code
 submissions_dir = root_dir + "/submissions"     # students' submitted files
@@ -52,7 +53,6 @@ def run_match(match):
    if not found:
       print "Exception occurred when running!"
       match.error = True
-   #q.put(match)
    return match
    
  
@@ -94,8 +94,8 @@ def create_matches(students):
       for second in students:
          if first != second:
             match = Match(first, second)
+            # no duplicates are ensured by calculating a hash-code
             matches.add(match)
-   
    return matches
 
 
@@ -114,9 +114,8 @@ def locate_source_files(matches):
          if filename.startswith(match.second_team):
             match.second_source = full_path
             
-def sort_teams_by_winds(matches):
-
-
+            
+def sort_teams_by_wins(matches):
    winners = dict()
    for match in matches:
       winner = match.winner
@@ -160,7 +159,7 @@ if __name__ == '__main__':
    print "\n"
             
    report_file.write("\nTeams sorted by the amount of 3-game series that they won: \n \n")
-   sorted_tuples= sort_teams_by_winds(matches)
+   sorted_tuples= sort_teams_by_wins(matches)
    for (winner, wins) in sorted_tuples:
       report_file.write(winner + " won " + str(wins) + " games " +"\n")
    report_file.close()
