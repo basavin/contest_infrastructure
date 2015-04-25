@@ -3,6 +3,7 @@ import os
 import subprocess
 from match import Match
 import operator
+from multiprocessing import Pool
 
 
 # PREREQUISITES: put this script, submissions folder and skeleton folder in the same place
@@ -25,60 +26,38 @@ def run_match(match):
    
    first = match.first_team
    second = match.second_team
-    
-   seeds = ['cs540', 'dima', 'madison']
-   for i in range(3):
-      print "---------------------------"
-      print "Running a match #", str(i+1),  "for", first, "and", second, "..."
-      
-      exitCode = subprocess.call([
-                                 python_exec, "capture.py", 
-                                 "-r", match.first_source,
-                                 "-b", match.second_source,
-                                 "--time", "10000",
-                                 "--fixRandomSeed", seeds[i],
-                                 "--layout", "layouts/defaultCapture.lay",
-                                 "--super-quiet"
-                                 ])
-      
-      
-      if exitCode != 0:
-         print "Exception occurred when running!"
-         match.error = True
-         return
-      else :
-         # record the score
-         score_file = open("score", "r")
-         score = int(score_file.readline())
-         match.scores.append(score)
+   
+   print "---------------------------"
+   print "Running games for" , first, "and", second, "...",
+
+   output = subprocess.check_output([
+            python_exec, "capture.py", 
+            "-r", match.first_source,
+            "-b", match.second_source,
+            "--time", "10000",
+            "--fixRandomSeed",
+            "--layout", "layouts/defaultCapture.lay",
+            "--numGames", str(3),
+            "--super-quiet"
+            ])
+   
    print "Done."
+   found = False
+   for line in output.split("\n"):
+      if line.startswith("Scores:"):
+         tokens = line.split(":")
+         scores = tokens[1].strip().split(",")
+         for score in scores:
+            match.scores.append(int(score))
+         found = True
+         break
+         
+   if not found:
+      print "Exception occurred when running!"
+      match.error = True
    print "---------------------------\n"
    
-
-"""
-   Remove compiled python files and score files from the contest 
-   code folder to get ready for a new play
-"""   
-def clean_contest_code():
-   # make sure we are in the right folder
-   os.chdir(contest_dir) 
-    
-   
-   for filename in os.listdir("."):
-      # remove all compiled python files
-      if filename.endswith(".pyc"):
-         os.remove(filename)
-      
-      # remove "score" file:
-      if filename == "score":
-         os.remove(filename)
-         
-      # remove "replay-0" file:
-      if filename == "replay-0":
-         os.remove(filename)
-   
-   return True
-
+ 
 """
    Go through the folder with all students' submissions 
    and record all students' names
@@ -118,9 +97,6 @@ def create_matches(students):
          if first != second:
             match = Match(first, second)
             matches.add(match)
-            
-#    for match in matches:
-#       print match.first_team, match.second_team
    
    return matches
 
@@ -140,78 +116,67 @@ def locate_source_files(matches):
          if filename.startswith(match.second_team):
             match.second_source = full_path
             
-def determine_winner(match):
-   first_team_won = 0
-   second_team_won = 0
-   for score in match.scores:
-      if score > 0:
-         first_team_won += 1
-      else:
-         second_team_won +=1
-         
-   if first_team_won > second_team_won:
-      match.winner = match.first_team
-   elif first_team_won < second_team_won:
-      match.winner = match.second_team
-   else:
-      match.winner = 'Tie!!'
-            
 
 if __name__ == '__main__':
    # get the names of all students with complete submissions
    students = extract_student_names()
-   
-   #print "Number of submissions:", len(students), "\n"
-   
+    
+   print "Number of submissions:", len(students), "\n"
+    
    # pair up the student teams
    matches = create_matches(students)
    print "Total matches to be played:", len(matches)
    # locate the source for their teams
    locate_source_files(matches)
    
+   i = 0
    # run the matches
-   i = 0;
    for match in matches:
-      
-      clean_contest_code()
       run_match(match)
-      
-      if match.error:
-         print "Error occurred when running a match" + str(match)
-         
+      match.determine_winner()
       print match
-      determine_winner(match)
       print "The winner is", match.winner
-      i +=1 
-      if i == 3 : break
+      i +=1
+      if i ==3:break
+      
+
+#    p = Pool(processes = 4)
+#    test = [list(matches)[0], list(matches)[1], list(matches)[2]]
+#    p.map(run_match, test)
    
-   # determine the overall winner
+#    print "WHAAAAAAA"
+    
+   #determine the overall winner
    winners = dict()
    for match in matches:
       winner = match.winner
       if winner == "":
          continue
-      
+        
       if winner in winners:
          winners[winner] +=1
       else:
          winners[winner] = 1
-         
+           
    report = root_dir + "/" + "report.txt"
    if os.path.exists(report):
       os.remove(report)
    report_file = open(report, "w")
-   
+     
    report_file.write("Results of each 3-game series between two teams: \n \n")
    for match in matches:
       report_file.write(str(match) +"\n")
    print "\n"
-         
-   report_file.write("\n Teams sorted by the amount of 3-game series that they won: \n \n")
+           
+   report_file.write("\nTeams sorted by the amount of 3-game series that they won: \n \n")
    sorted_x = sorted(winners.items(), key=operator.itemgetter(1), reverse=True)
    for (winner, wins) in sorted_x:
       report_file.write(winner + " won " + str(wins) + " games " +"\n")
    report_file.close()
+   
+   
+      
+   
       
    
    

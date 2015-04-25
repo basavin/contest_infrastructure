@@ -19,12 +19,33 @@ class Match:
    # return true if one of the teams in the target team
    def has_team(self, team):
       return team in self.key
+   
 
    def __str__(self):
       return "" + str(self.key) + " : " + str(self.scores)
    
    
+   def determine_winner(self):
+      if self.error:
+         self.winner = 'Error occurred'
+         return
+         
+      first_team_won = 0
+      second_team_won = 0
       
+      for score in self.scores:
+         if score > 0:
+            first_team_won += 1
+         elif score < 0 :
+            second_team_won +=1
+              
+      if first_team_won > second_team_won:
+         self.winner = self.first_team
+      elif first_team_won < second_team_won:
+         self.winner = self.second_team
+      else:
+         self.winner = 'Tie!!'
+
    # implement the following two methods to be able to 
    # use Match objects as elements of set
    def __hash__(self):
