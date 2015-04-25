@@ -12,7 +12,7 @@ from multiprocessing import Pool
 # --- submissions-folder
 # --- contest-folder
 # --- run.py
-
+# --- match.py
 root_dir = os.getcwd()                          # directory where this script resides
 contest_dir = root_dir + "/contest"             # contest project code
 submissions_dir = root_dir + "/submissions"     # students' submitted files
@@ -27,9 +27,7 @@ def run_match(match):
    first = match.first_team
    second = match.second_team
    
-   print "---------------------------"
-   print "Running games for" , first, "and", second, "...",
-
+   print "Running games for" , first, "and", second, "..."
    output = subprocess.check_output([
             python_exec, "capture.py", 
             "-r", match.first_source,
@@ -40,8 +38,7 @@ def run_match(match):
             "--numGames", str(3),
             "--super-quiet"
             ])
-   
-   print "Done."
+
    found = False
    for line in output.split("\n"):
       if line.startswith("Scores:"):
@@ -55,7 +52,8 @@ def run_match(match):
    if not found:
       print "Exception occurred when running!"
       match.error = True
-   print "---------------------------\n"
+   #q.put(match)
+   return match
    
  
 """
@@ -116,6 +114,22 @@ def locate_source_files(matches):
          if filename.startswith(match.second_team):
             match.second_source = full_path
             
+def sort_teams_by_winds(matches):
+
+
+   winners = dict()
+   for match in matches:
+      winner = match.winner
+      if winner == "":
+         continue
+         
+      if winner in winners:
+         winners[winner] +=1
+      else:
+         winners[winner] = 1      
+         
+   sorted_tuples = sorted(winners.items(), key=operator.itemgetter(1), reverse=True)   
+   return sorted_tuples
 
 if __name__ == '__main__':
    # get the names of all students with complete submissions
@@ -125,54 +139,32 @@ if __name__ == '__main__':
     
    # pair up the student teams
    matches = create_matches(students)
-   print "Total matches to be played:", len(matches)
+   print "Total matches to be played:", len(matches), "\n"
    # locate the source for their teams
    locate_source_files(matches)
    
-   i = 0
-   # run the matches
-   for match in matches:
-      run_match(match)
-      match.determine_winner()
-      print match
-      print "The winner is", match.winner
-      i +=1
-      if i ==3:break
+   p = Pool(processes = 4)
+   test = [list(matches)[0], list(matches)[1], list(matches)[2], list(matches)[3]]
+   matches = p.map(run_match, test)
       
-
-#    p = Pool(processes = 4)
-#    test = [list(matches)[0], list(matches)[1], list(matches)[2]]
-#    p.map(run_match, test)
-   
-#    print "WHAAAAAAA"
-    
-   #determine the overall winner
-   winners = dict()
-   for match in matches:
-      winner = match.winner
-      if winner == "":
-         continue
-        
-      if winner in winners:
-         winners[winner] +=1
-      else:
-         winners[winner] = 1
-           
+ 
    report = root_dir + "/" + "report.txt"
    if os.path.exists(report):
       os.remove(report)
    report_file = open(report, "w")
-     
+      
    report_file.write("Results of each 3-game series between two teams: \n \n")
    for match in matches:
+      match.determine_winner()
       report_file.write(str(match) +"\n")
    print "\n"
-           
+            
    report_file.write("\nTeams sorted by the amount of 3-game series that they won: \n \n")
-   sorted_x = sorted(winners.items(), key=operator.itemgetter(1), reverse=True)
-   for (winner, wins) in sorted_x:
+   sorted_tuples= sort_teams_by_winds(matches)
+   for (winner, wins) in sorted_tuples:
       report_file.write(winner + " won " + str(wins) + " games " +"\n")
    report_file.close()
+   print "Done."
    
    
       

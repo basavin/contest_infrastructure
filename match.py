@@ -22,7 +22,7 @@ class Match:
    
 
    def __str__(self):
-      return "" + str(self.key) + " : " + str(self.scores)
+      return "" + str(self.key) + " : " + str(self.scores) + " and the winner is " + self.winner
    
    
    def determine_winner(self):
