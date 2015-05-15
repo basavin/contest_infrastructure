@@ -20,7 +20,6 @@ submissions_dir = root_dir + "/submissions"     # students' submitted files
 #python_exec = '/s/python-2.7.3/bin/python2.7'  # path to python ver 2.7 exec
 python_exec = sys.executable                    # use the same executable by default
  
- 
 def run_match(match):
    # make sure we are in the right folder
    os.chdir(contest_dir) 
@@ -29,16 +28,22 @@ def run_match(match):
    second = match.second_team
    
    print "Running games for" , first, "and", second, "..."
-   output = subprocess.check_output([
+   try:
+      output = subprocess.check_output([
+            "timeout", "3015s",
             python_exec, "capture.py", 
             "-r", match.first_source,
             "-b", match.second_source,
-            "--time", "10000",
+            "--time", "1200",
             "--fixRandomSeed",
             "--layout", "layouts/defaultCapture.lay",
             "--numGames", str(3),
             "--super-quiet"
             ])
+   except Exception:
+      print "Exception occurred when running", first, "and", second
+      match.error = True
+      return match
 
    found = False
    for line in output.split("\n"):
@@ -48,11 +53,13 @@ def run_match(match):
          for score in scores:
             match.scores.append(int(score))
          found = True
-         break
-         
+         break    
    if not found:
-      print "Exception occurred when running!"
+      print "Exception occurred when running", first, "and", second
       match.error = True
+      
+   match.determine_winner();
+   print str(match)
    return match
    
  
@@ -99,6 +106,16 @@ def create_matches(students):
    return matches
 
 
+def create_matches_with_baseline(students):
+   matches = set()
+   for student in students:
+      if student == "baseline team2":
+         continue
+      match = Match(student, "baseline team2")
+      matches.add(match)
+   return matches
+
+
 def locate_source_files(matches):
    # make sure we are in the right folder
    os.chdir(submissions_dir)
@@ -119,7 +136,7 @@ def sort_teams_by_wins(matches):
    winners = dict()
    for match in matches:
       winner = match.winner
-      if winner == "":
+      if winner == "" or winner == "Tie!!" or winner == 'Error occurred':
          continue
          
       if winner in winners:
@@ -138,12 +155,15 @@ if __name__ == '__main__':
     
    # pair up the student teams
    matches = create_matches(students)
+   #matches = create_matches_with_baseline(students)
    print "Total matches to be played:", len(matches), "\n"
    # locate the source for their teams
    locate_source_files(matches)
    
    p = Pool(processes = 4)
    matches = p.map(run_match, matches)
+   
+   #match = run_match(list(matches)[0])
  
    report = root_dir + "/" + "report.txt"
    if os.path.exists(report):
@@ -154,7 +174,7 @@ if __name__ == '__main__':
    for match in matches:
       match.determine_winner()
       report_file.write(str(match) +"\n")
-   print "\n"
+   report_file.write("\n")
             
    report_file.write("\nTeams sorted by the amount of 3-game series that they won: \n \n")
    sorted_tuples= sort_teams_by_wins(matches)
